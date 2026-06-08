@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>АРМ Клиента | Орби CRM</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: #f5f7fb;
+            color: #1e293b;
+            line-height: 1.4;
+        }
+
+        /* --- Хедер в стиле CRM --- */
+        .app-header {
+            background: white;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.03);
+            padding: 0 32px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(2px);
+            border-bottom: 1px solid #e9edf2;
+        }
+
+        /* левая группа: меню + название организации */
+        .header-group {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+        }
+
+        /* выпадающее меню (dropdown) */
+        .dropdown {
+            position: relative;
+        }
+
+        .menu-btn {
+            background: #f1f5f9;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: 40px;
+            color: #0f172a;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.02);
+        }
+
+        .menu-btn:hover {
+            background: #e6edf4;
+            transform: translateY(-1px);
+        }
+
+        .menu-btn:active {
+            transform: translateY(1px);
+        }
+
+        .dropdown-content {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            background: white;
+            min-width: 210px;
+            border-radius: 20px;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.02);
+            overflow: hidden;
+            backdrop-filter: blur(0);
+            z-index: 150;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-8px);
+            transition: all 0.2s ease;
+            border: 1px solid #eef2f6;
+        }
+
+        .dropdown-content.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-content a {
+            display: block;
+            padding: 12px 20px;
+            text-decoration: none;
+            color: #1e293b;
+            font-weight: 450;
+            transition: background 0.15s;
+            border-left: 3px solid transparent;
+            cursor: pointer;
+        }
+
+        .dropdown-content a:hover {
+            background: #f8fafc;
+            border-left-color: #3b82f6;
+            color: #0f172a;
+        }
+
+        /* название организации */
+        .org-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+            background: linear-gradient(135deg, #1e293b 0%, #2d3a4e 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            text-shadow: 0 1px 1px rgba(0,0,0,0.02);
+        }
+
+        /* блок времени */
+        .time-box {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            font-weight: 500;
+            background: #f1f5f9;
+            padding: 8px 18px;
+            border-radius: 60px;
+            color: #0f172a;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.02);
+        }
+
+        /* основной контент */
+        .main-content {
+            max-width: 1400px;
+            margin: 28px auto;
+            padding: 0 28px;
+        }
+
+        /* карточка-контейнер */
+        .dashboard-card {
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.02), 0 2px 6px rgba(0, 0, 0, 0.05);
+            padding: 28px 32px;
+            transition: all 0.2s;
+            border: 1px solid #edf2f7;
+        }
+
+        .section-title {
+            font-size: 1.7rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left: 4px solid #3b82f6;
+            padding-left: 20px;
+        }
+
+        /* таблицы */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        .data-table th {
+            text-align: left;
+            padding: 14px 12px;
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #334155;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .data-table td {
+            padding: 14px 12px;
+            border-bottom: 1px solid #ecf3f9;
+            color: #1e293b;
+        }
+
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .badge {
+            background: #eef2ff;
+            color: #1e40af;
+            padding: 4px 12px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            display: inline-block;
+        }
+
+        /* календарь */
+        .calendar-container {
+            background: #ffffff;
+            border-radius: 24px;
+            overflow-x: auto;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .month-year {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .cal-nav {
+            display: flex;
+            gap: 12px;
+        }
+
+        .cal-nav button {
+            background: #f1f5f9;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.1s;
+            font-family: inherit;
+        }
+
+        .cal-nav button:hover {
+            background: #e2e8f0;
+        }
+
+        .calendar-weekdays, .calendar-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            text-align: center;
+        }
+
+        .calendar-weekdays div {
+            font-weight: 600;
+            padding: 12px 0;
+            color: #475569;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .calendar-days {
+            margin-top: 8px;
+        }
+
+        .cal-day {
+            background: #f9fbfd;
+            padding: 12px 6px;
+            border-radius: 16px;
+            font-weight: 500;
+            transition: 0.1s;
+            cursor: default;
+            border: 1px solid #eef2f8;
+        }
+
+        .cal-day.today {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+            box-shadow: 0 2px 6px rgba(59,130,246,0.2);
+        }
+
+        .cal-day.other-month {
+            color: #94a3b8;
+            background: #fefefe;
+        }
+
+        @media (max-width: 700px) {
+            .app-header {
+                padding: 0 18px;
+                height: 64px;
+            }
+            .header-group {
+                gap: 20px;
+            }
+            .org-name {
+                font-size: 1.2rem;
+            }
+            .time-box {
+                font-size: 0.9rem;
+                padding: 5px 12px;
+            }
+            .dashboard-card {
+                padding: 18px;
+            }
+            .section-title {
+                font-size: 1.4rem;
+            }
+            .data-table th, .data-table td {
+                padding: 8px 6px;
+                font-size: 0.8rem;
+            }
+        }
+
+        footer {
+            text-align: center;
+            padding: 28px;
+            font-size: 0.75rem;
+            color: #6c7a91;
+            border-top: 1px solid #eef2f8;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<header class="app-header">
+    <div class="header-group">
+        <!-- Выпадающий список Меню -->
+        <div class="dropdown" id="dropdownMenu">
+            <button class="menu-btn" id="menuButton">
+                ☰ Меню
+            </button>
+            <div class="dropdown-content" id="dropdownContent">
+                <a data-section="calendar">📅 Календарь</a>
+                <a data-section="deals">💰 Сделки</a>
+                <a data-section="goods">📦 Товары и услуги</a>
+                <a data-section="contacts">👥 Контакты</a>
+            </div>
+        </div>
+        <div class="org-name">Орби</div>
+    </div>
+    <div class="time-box" id="liveClock">--:--:--</div>
+</header>
+
+<main class="main-content">
+    <div class="dashboard-card" id="dynamicContent">
+        <!-- сюда динамически подставляется активный раздел -->
+        <div style="text-align: center; padding: 40px;">Загрузка интерфейса...</div>
+    </div>
+</main>
+<footer>
+    Орби CRM — клиентский портал | Лёгкая работа с бизнесом
+</footer>
+
+<script>
+    // ---------- ДАННЫЕ ДЛЯ ДЕМОНСТРАЦИИ (имитация АРМ клиента) ----------
+    // Сделки (mock)
+    const dealsData = [
+        { id: 1, name: "Внедрение CRM", amount: "1 250 000 ₽", stage: "Переговоры", date: "2025-07-20" },
+        { id: 2, name: "Лицензия на 12 мес", amount: "340 000 ₽", stage: "Счёт выставлен", date: "2025-06-15" },
+        { id: 3, name: "Расширение функционала", amount: "850 000 ₽", stage: "Закрыто", date: "2025-05-10" },
+    ];
+
+    // Товары и услуги
+    const goodsData = [
+        { name: "Базовый тариф CRM", price: "12 900 ₽", unit: "месяц", desc: "До 10 пользователей" },
+        { name: "Профессиональный тариф", price: "29 900 ₽", unit: "месяц", desc: "Расширенная аналитика" },
+        { name: "Интеграция с 1С", price: "49 000 ₽", unit: "ед.", desc: "Настройка под ключ" },
+        { name: "Обучающий курс", price: "15 000 ₽", unit: "курс", desc: "Видео-уроки + методичка" },
+    ];
+
+    // Контакты клиента (список персон)
+    const contactsData = [
+        { name: "Анна Крылова", position: "Руководитель отдела", phone: "+7 (912) 345-67-89", email: "a.krylova@example.com" },
+        { name: "Дмитрий Волков", position: "Менеджер по закупкам", phone: "+7 (965) 123-45-67", email: "d.volkov@example.com" },
+        { name: "Елена Соболева", position: "Финансовый директор", phone: "+7 (903) 987-65-43", email: "e.soboleva@example.com" },
+    ];
+
+    // ---------- Утилиты ----------
+    function formatDateToYMD(date) {
+        let y = date.getFullYear();
+        let m = String(date.getMonth() + 1).padStart(2, '0');
+        let d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    // Генерация календаря (с поддержкой переключения месяцев)
+    let currentCalendarYear = new Date().getFullYear();
+    let currentCalendarMonth = new Date().getMonth(); // 0-11
+
+    function renderCalendar(year, month) {
+        const firstDayOfMonth = new Date(year, month, 1);
+        const startWeekday = firstDayOfMonth.getDay(); // 0 вс — но мы подстроим под понедельник
+        let startOffset = startWeekday === 0 ? 6 : startWeekday - 1; // понедельник как 0
+
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        const prevMonthDays = new Date(year, month, 0).getDate();
+        const calendarDays = [];
+
+        // предыдущий месяц
+        for (let i = startOffset - 1; i >= 0; i--) {
+            calendarDays.push({ day: prevMonthDays - i, isCurrentMonth: false });
+        }
+
+        // текущий месяц
+        for (let i = 1; i <= daysInMonth; i++) {
+            calendarDays.push({ day: i, isCurrentMonth: true });
+        }
+
+        // следующий месяц (добиваем до 42 ячеек для 6 строк)
+        const remaining = 42 - calendarDays.length;
+        for (let i = 1; i <= remaining; i++) {
+            calendarDays.push({ day: i, isCurrentMonth: false });
+        }
+
+        const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+        const weekdaysShort = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+        const today = new Date();
+        const todayYMD = formatDateToYMD(today);
+
+        let html = `
+            <div class="calendar-container">
+                <div class="calendar-header">
+                    <div class="month-year">${monthNames[month]} ${year}</div>
+                    <div class="cal-nav">
+                        <button class="prev-month-btn">◀ Назад</button>
+                        <button class="next-month-btn">Вперед ▶</button>
+                    </div>
+                </div>
+                <div class="calendar-weekdays">
+                    ${weekdaysShort.map(day => `<div>${day}</div>`).join('')}
+                </div>
+                <div class="calendar-days">
+        `;
+
+        for (let i = 0; i < calendarDays.length; i++) {
+            const cell = calendarDays[i];
+            const dayNum = cell.day;
+            const isCurrent = cell.isCurrentMonth;
+            let cellDate = null;
+            if (isCurrent) {
+                cellDate = new Date(year, month, dayNum);
+            } else if (dayNum > 15) {
+                // прошлый месяц
+                let prevMonth = month === 0 ? 11 : month - 1;
+                let prevYear = month === 0 ? year - 1 : year;
+                cellDate = new Date(prevYear, prevMonth, dayNum);
+            } else {
+                let nextMonth = month === 11 ? 0 : month + 1;
+                let nextYear = month === 11 ? year + 1 : year;
+                cellDate = new Date(nextYear, nextMonth, dayNum);
+            }
+
+            let isToday = false;
+            if (cellDate) {
+                const ymd = formatDateToYMD(cellDate);
+                if (ymd === todayYMD && isCurrent) isToday = true;
+            }
+            let additionalClass = '';
+            if (!isCurrent) additionalClass = 'other-month';
+            if (isToday) additionalClass += ' today';
+            html += `<div class="cal-day ${additionalClass}">${dayNum}</div>`;
+        }
+
+        html += `</div></div>`;
+        return html;
+    }
+
+    function refreshCalendar(container) {
+        if (!container) return;
+        container.innerHTML = renderCalendar(currentCalendarYear, currentCalendarMonth);
+        // привязываем события к кнопкам внутри календаря
+        const prevBtn = container.querySelector('.prev-month-btn');
+        const nextBtn = container.querySelector('.next-month-btn');
+        if (prevBtn) {
+            prevBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                let newMonth = currentCalendarMonth - 1;
+                let newYear = currentCalendarYear;
+                if (newMonth < 0) {
+                    newMonth = 11;
+                    newYear--;
+                }
+                currentCalendarMonth = newMonth;
+                currentCalendarYear = newYear;
+                refreshCalendar(container);
+            });
+        }
+        if (nextBtn) {
+            nextBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                let newMonth = currentCalendarMonth + 1;
+                let newYear = currentCalendarYear;
+                if (newMonth > 11) {
+                    newMonth = 0;
+                    newYear++;
+                }
+                currentCalendarMonth = newMonth;
+                currentCalendarYear = newYear;
+                refreshCalendar(container);
+            });
+        }
+    }
+
+    // -------- Отрисовка разделов --------
+    function renderSection(sectionId) {
+        const contentDiv = document.getElementById('dynamicContent');
+        if (!contentDiv) return;
+
+        if (sectionId === 'calendar') {
+            // сбросим календарь на текущую дату
+            const now = new Date();
+            currentCalendarYear = now.getFullYear();
+            currentCalendarMonth = now.getMonth();
+            const calendarHtml = `
+                <div class="section-title">📅 Календарь событий</div>
+                <div id="calendarRoot" class="calendar-root"></div>
+            `;
+            contentDiv.innerHTML = calendarHtml;
+            const calendarRoot = document.getElementById('calendarRoot');
+            if (calendarRoot) {
+                refreshCalendar(calendarRoot);
+            }
+        }
+        else if (sectionId === 'deals') {
+            let tableRows = '';
+            dealsData.forEach(deal => {
+                tableRows += `<tr>
+                                <td><strong>${deal.name}</strong></td>
+                                <td>${deal.amount}</td>
+                                <td><span class="badge">${deal.stage}</span></td>
+                                <td>${deal.date}</td>
+                            </tr>`;
+            });
+            contentDiv.innerHTML = `
+                <div class="section-title">💰 Сделки</div>
+                <div style="overflow-x: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Название сделки</th><th>Сумма</th><th>Стадия</th><th>Дата</th></tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 20px; background:#f9f9fb; padding: 16px; border-radius: 20px;">
+                    📊 Итоговая сумма активных сделок: 2 440 000 ₽
+                </div>
+            `;
+        }
+        else if (sectionId === 'goods') {
+            let goodsRows = '';
+            goodsData.forEach(item => {
+                goodsRows += `<tr><td>${item.name}</td><td>${item.price}</td><td>${item.unit}</td><td>${item.desc}</td></tr>`;
+            });
+            contentDiv.innerHTML = `
+                <div class="section-title">📦 Товары и услуги</div>
+                <div style="overflow-x: auto;">
+                    <table class="data-table">
+                        <thead><tr><th>Наименование</th><th>Цена</th><th>Ед. изм.</th><th>Описание</th></tr></thead>
+                        <tbody>${goodsRows}</tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 20px; background:#f1f5fe; border-radius: 18px; padding: 16px;">
+                    ⚡ Актуальные предложения для клиентов "Орби"
+                </div>
+            `;
+        }
+        else if (sectionId === 'contacts') {
+            let contactsRows = '';
+            contactsData.forEach(contact => {
+                contactsRows += `<tr>
+                                    <td><strong>${contact.name}</strong></td>
+                                    <td>${contact.position}</td>
+                                    <td>${contact.phone}</td>
+                                    <td>${contact.email}</td>
+                                </tr>`;
+            });
+            contentDiv.innerHTML = `
+                <div class="section-title">👥 Контакты</div>
+                <div style="overflow-x: auto;">
+                    <table class="data-table">
+                        <thead><tr><th>ФИО</th><th>Должность</th><th>Телефон</th><th>Email</th></tr></thead>
+                        <tbody>${contactsRows}</tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 24px; background:#eef2ff; border-radius: 20px; padding: 16px;">
+                    📞 Быстрая связь: общий корпоративный телефон +7 (495) 555-23-23
+                </div>
+            `;
+        }
+    }
+
+    // ---------- Управление меню и состоянием ----------
+    let currentSection = 'calendar';
+
+    function setActiveSection(section) {
+        currentSection = section;
+        renderSection(section);
+        // закрываем выпадающее меню после выбора
+        closeDropdown();
+    }
+
+    // dropdown логика
+    const menuBtn = document.getElementById('menuButton');
+    const dropdownContent = document.getElementById('dropdownContent');
+
+    function toggleDropdown(e) {
+        e?.stopPropagation();
+        dropdownContent.classList.toggle('show');
+    }
+
+    function closeDropdown() {
+        dropdownContent.classList.remove('show');
+    }
+
+    // обработчики пунктов меню
+    document.querySelectorAll('.dropdown-content a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const section = link.getAttribute('data-section');
+            if (section === 'calendar') setActiveSection('calendar');
+            else if (section === 'deals') setActiveSection('deals');
+            else if (section === 'goods') setActiveSection('goods');
+            else if (section === 'contacts') setActiveSection('contacts');
+        });
+    });
+
+    menuBtn.addEventListener('click', toggleDropdown);
+
+    // закрытие при клике вне меню
+    window.addEventListener('click', function(e) {
+        if (!menuBtn.contains(e.target) && !dropdownContent.contains(e.target)) {
+            closeDropdown();
+        }
+    });
+
+    // Обновление времени в реальном времени
+    function updateClock() {
+        const now = new Date();
+        const formatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const clockElement = document.getElementById('liveClock');
+        if (clockElement) clockElement.textContent = formatted;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Инициализация: по умолчанию показываем календарь
+    setActiveSection('calendar');
+</script>
+</body>
+</html>
