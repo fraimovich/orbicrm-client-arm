@@ -1005,5 +1005,25 @@
     // Старт
     setActiveSection('calendar');
 </script>
+<script>
+  async function loadContacts() {
+    const container = document.getElementById('contacts-placeholder');
+    if (!container) return;
+
+    try {
+      const response = await fetch('contacts.html');  // файл в корне репозитория
+      if (!response.ok) throw new Error('Не удалось загрузить контакты');
+      const html = await response.text();
+      container.innerHTML = html;
+    } catch (err) {
+      console.error(err);
+      container.innerHTML = '<p style="color:red;">Ошибка загрузки контактов</p>';
+    }
+  }
+
+  // Загружаем при загрузке страницы
+  document.addEventListener('DOMContentLoaded', loadContacts);
+</script>
+  
 </body>
 </html>
