@@ -459,7 +459,7 @@
 </footer>
 
 <script>
-    // ---------- ДАННЫЕ ДЛЯ ДЕМОНСТРАЦИИ (имитация АРМ клиента) ----------
+    // ---------- ДАННЫЕ ДЛЯ ДЕМОНСТРАЦИИ (кроме контактов — они динамические) ----------
     const dealsData = [
         { id: 1, name: "Внедрение CRM", amount: "1 250 000 ₽", stage: "Переговоры", date: "2025-07-20" },
         { id: 2, name: "Лицензия на 12 мес", amount: "340 000 ₽", stage: "Счёт выставлен", date: "2025-06-15" },
@@ -471,12 +471,6 @@
         { name: "Профессиональный тариф", price: "29 900 ₽", unit: "месяц", desc: "Расширенная аналитика" },
         { name: "Интеграция с 1С", price: "49 000 ₽", unit: "ед.", desc: "Настройка под ключ" },
         { name: "Обучающий курс", price: "15 000 ₽", unit: "курс", desc: "Видео-уроки + методичка" },
-    ];
-
-    const contactsData = [
-        { name: "Анна Крылова", position: "Руководитель отдела", phone: "+7 (912) 345-67-89", email: "a.krylova@example.com" },
-        { name: "Дмитрий Волков", position: "Менеджер по закупкам", phone: "+7 (965) 123-45-67", email: "d.volkov@example.com" },
-        { name: "Елена Соболева", position: "Финансовый директор", phone: "+7 (903) 987-65-43", email: "e.soboleva@example.com" },
     ];
 
     // ---------- Утилиты ----------
@@ -680,7 +674,7 @@
 
     // ---------- Калькулятор (безопасная логика) ----------
     let calcState = {
-        current: '0',     // отображаемое число
+        current: '0',
         prev: null,
         operation: null,
         waitingForOperand: false
@@ -775,7 +769,6 @@
             calcState.operation = nextOp;
             calcState.waitingForOperand = true;
         } else {
-            // равно - уже всё посчитано выше
             calcState.waitingForOperand = true;
         }
     }
@@ -787,7 +780,6 @@
     }
 
     function initCalculator(container) {
-        // Создаём HTML структуру калькулятора
         container.innerHTML = `
             <div class="calculator">
                 <div class="calc-display" id="calcDisplay">0</div>
@@ -820,7 +812,6 @@
         `;
 
         const display = container.querySelector('#calcDisplay');
-        // Сброс состояния при открытии
         calcState = {
             current: '0',
             prev: null,
@@ -829,7 +820,6 @@
         };
         updateDisplay(display);
 
-        // Назначение обработчиков
         container.querySelectorAll('[data-digit]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const digit = btn.getAttribute('data-digit');
@@ -860,7 +850,6 @@
         const equalsBtn = container.querySelector('[data-action="equals"]');
         if (equalsBtn) equalsBtn.addEventListener('click', () => evaluate(display));
 
-        // Клавиатурная поддержка
         const handleKeyDown = (e) => {
             const key = e.key;
             if (/[0-9]/.test(key)) {
@@ -871,10 +860,7 @@
                 inputDecimal(display);
             } else if (key === '+' || key === '-' || key === '*' || key === '/') {
                 e.preventDefault();
-                let op = key;
-                if (key === '*') op = '*';
-                if (key === '/') op = '/';
-                performOperation(op, display);
+                performOperation(key, display);
             } else if (key === 'Enter' || key === '=') {
                 e.preventDefault();
                 evaluate(display);
@@ -887,9 +873,6 @@
             }
         };
         window.addEventListener('keydown', handleKeyDown);
-        // Сохраняем возможность удалить обработчик при уходе с вкладки (опционально)
-        // Для простоты оставим, но он будет жить глобально, что не страшно.
-        // Можно при перерисовке удалять предыдущий, но не критично.
     }
 
     function renderCalculator() {
@@ -899,7 +882,22 @@
         if (calcRoot) initCalculator(calcRoot);
     }
 
-    // ---------- Остальные разделы ----------
+    // ---------- ДИНАМИЧЕСКАЯ ЗАГРУЗКА КОНТАКТОВ ИЗ contacts.html (Supabase) ----------
+    async function loadContactsIntoPlaceholder(containerElement) {
+        if (!containerElement) return;
+        containerElement.innerHTML = '<p style="text-align:center; padding:20px;">⏳ Загрузка контактов...</p>';
+        try {
+            const response = await fetch('contacts.html?_=' + Date.now()); // добавляем timestamp, чтобы избежать кеша
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            const html = await response.text();
+            containerElement.innerHTML = html;
+        } catch (err) {
+            console.error('Ошибка загрузки контактов:', err);
+            containerElement.innerHTML = '<p style="color:#dc2626; text-align:center;">⚠️ Не удалось загрузить справочник контактов. Попробуйте позже.</p><p style="font-size:0.85rem; text-align:center;">Убедитесь, что файл contacts.html сгенерирован и доступен.</p>';
+        }
+    }
+
+    // ---------- Остальные разделы (вкладки) ----------
     function renderSection(sectionId) {
         const contentDiv = document.getElementById('dynamicContent');
         if (!contentDiv) return;
@@ -936,15 +934,14 @@
             `;
         }
         else if (sectionId === 'contacts') {
-            let contactsRows = '';
-            contactsData.forEach(contact => {
-                contactsRows += `<tr><td><strong>${contact.name}</strong></td><td>${contact.position}</td><td>${contact.phone}</td><td>${contact.email}</td></tr>`;
-            });
+            // Генерируем контейнер для динамической подгрузки
             contentDiv.innerHTML = `
-                <div class="section-title">👥 Контакты</div>
-                <div style="overflow-x: auto;"><table class="data-table"><thead><tr><th>ФИО</th><th>Должность</th><th>Телефон</th><th>Email</th></tr></thead><tbody>${contactsRows}</tbody></table></div>
-                <div style="margin-top:24px; background:#eef2ff; border-radius:20px; padding:16px;">📞 Быстрая связь: общий корпоративный телефон +7 (495) 555-23-23</div>
+                <div class="section-title">👥 Контакты (актуальные данные из CRM)</div>
+                <div id="contacts-placeholder" style="min-height: 200px;"></div>
+                <div style="margin-top:24px; background:#eef2ff; border-radius:20px; padding:16px;">📞 Общий корпоративный телефон: +7 (495) 555-23-23</div>
             `;
+            const placeholder = document.getElementById('contacts-placeholder');
+            if (placeholder) loadContactsIntoPlaceholder(placeholder);
         }
         else if (sectionId === 'import') {
             renderImportSection();
@@ -977,13 +974,11 @@
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const section = link.getAttribute('data-section');
-            if (section === 'calendar') setActiveSection('calendar');
-            else if (section === 'deals') setActiveSection('deals');
-            else if (section === 'goods') setActiveSection('goods');
-            else if (section === 'contacts') setActiveSection('contacts');
-            else if (section === 'import') setActiveSection('import');
-            else if (section === 'calculator') setActiveSection('calculator');
-            else if (section === 'exit') window.location.href = 'https://orbicrm.ru/';
+            if (section === 'exit') {
+                window.location.href = 'https://orbicrm.ru/';
+            } else {
+                setActiveSection(section);
+            }
         });
     });
 
@@ -1002,28 +997,8 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Старт
+    // Старт с календаря
     setActiveSection('calendar');
 </script>
-<script>
-  async function loadContacts() {
-    const container = document.getElementById('contacts-placeholder');
-    if (!container) return;
-
-    try {
-      const response = await fetch('contacts.html');  // файл в корне репозитория
-      if (!response.ok) throw new Error('Не удалось загрузить контакты');
-      const html = await response.text();
-      container.innerHTML = html;
-    } catch (err) {
-      console.error(err);
-      container.innerHTML = '<p style="color:red;">Ошибка загрузки контактов</p>';
-    }
-  }
-
-  // Загружаем при загрузке страницы
-  document.addEventListener('DOMContentLoaded', loadContacts);
-</script>
-  
 </body>
 </html>
