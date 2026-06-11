@@ -310,6 +310,85 @@
             color: #4b5563;
         }
 
+        /* Стили для калькулятора */
+        .calculator {
+            max-width: 380px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 32px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+            overflow: hidden;
+            border: 1px solid #edf2f7;
+        }
+        .calc-display {
+            background: #f8fafc;
+            padding: 28px 20px;
+            text-align: right;
+            font-size: 2.8rem;
+            font-weight: 500;
+            font-family: 'JetBrains Mono', monospace;
+            color: #0f172a;
+            border-bottom: 1px solid #eef2f8;
+            word-wrap: break-word;
+            word-break: break-all;
+            min-height: 110px;
+        }
+        .calc-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            padding: 24px;
+            background: #ffffff;
+        }
+        .calc-btn {
+            background: #f1f5f9;
+            border: none;
+            border-radius: 28px;
+            padding: 16px 8px;
+            font-size: 1.3rem;
+            font-weight: 500;
+            color: #1e293b;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            font-family: inherit;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.02);
+        }
+        .calc-btn:active {
+            transform: scale(0.96);
+            background: #e2e8f0;
+        }
+        .calc-btn.operator {
+            background: #eef2ff;
+            color: #2563eb;
+            font-weight: 600;
+        }
+        .calc-btn.equals {
+            background: #3b82f6;
+            color: white;
+        }
+        .calc-btn.clear {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .calc-btn.backspace {
+            background: #f1f5f9;
+            font-size: 1.2rem;
+        }
+        @media (max-width: 500px) {
+            .calc-buttons {
+                gap: 6px;
+                padding: 18px;
+            }
+            .calc-btn {
+                padding: 14px 4px;
+                font-size: 1.1rem;
+            }
+            .calc-display {
+                font-size: 2rem;
+                padding: 20px 16px;
+            }
+        }
+
         @media (max-width: 700px) {
             .app-header {
                 padding: 0 18px;
@@ -361,6 +440,7 @@
                 <a data-section="goods">📦 Товары и услуги</a>
                 <a data-section="contacts">👥 Контакты</a>
                 <a data-section="import">📂 Импорт Excel</a>
+                <a data-section="calculator">🧮 Калькулятор</a>
                 <a data-section="exit">✖ Выход</a>
             </div>
         </div>
@@ -509,7 +589,7 @@
     }
 
     // ---------- Импорт Excel (SheetJS) ----------
-    let importedData = null; // хранить последние данные для возможного повторного использования
+    let importedData = null;
 
     function renderImportSection() {
         const contentDiv = document.getElementById('dynamicContent');
@@ -542,14 +622,12 @@
         reader.onload = function(e) {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
-            // Берём первый лист
             const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
             const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
             if (!rows || rows.length === 0) {
                 previewDiv.innerHTML = '<p style="color: #dc2626;">Файл пуст или не содержит данных.</p>';
                 return;
             }
-            // Сохраняем данные
             importedData = rows;
             displayExcelTable(rows, previewDiv);
         };
@@ -564,16 +642,13 @@
             container.innerHTML = '<p>Нет данных для отображения</p>';
             return;
         }
-        // Создаём таблицу
         let html = '<table class="data-table" style="min-width: 500px;"><thead><tr>';
-        // Заголовки (первая строка)
         const headerRow = rows[0];
         for (let i = 0; i < headerRow.length; i++) {
             let cellValue = (headerRow[i] !== undefined && headerRow[i] !== null) ? String(headerRow[i]) : '';
             html += `<th>${escapeHtml(cellValue) || `Колонка ${i+1}`}</th>`;
         }
         html += '</tr></thead><tbody>';
-        // Данные (со второй строки)
         for (let r = 1; r < rows.length; r++) {
             const row = rows[r];
             html += '<tr>';
@@ -581,7 +656,6 @@
                 let cell = (c < row.length && row[c] !== undefined && row[c] !== null) ? String(row[c]) : '';
                 html += `<td>${escapeHtml(cell)}</td>`;
             }
-            // Если в строке больше колонок чем в заголовке (редко, но добавим запас)
             if (row.length > headerRow.length) {
                 for (let c = headerRow.length; c < row.length; c++) {
                     html += `<td>${escapeHtml(String(row[c]))}</td>`;
@@ -594,7 +668,6 @@
         container.innerHTML = html;
     }
 
-    // простая защита от XSS (пользовательские данные из Excel)
     function escapeHtml(str) {
         if (!str) return '';
         return str.replace(/[&<>]/g, function(m) {
@@ -602,9 +675,228 @@
             if (m === '<') return '&lt;';
             if (m === '>') return '&gt;';
             return m;
-        }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
-            return c;
         });
+    }
+
+    // ---------- Калькулятор (безопасная логика) ----------
+    let calcState = {
+        current: '0',     // отображаемое число
+        prev: null,
+        operation: null,
+        waitingForOperand: false
+    };
+
+    function updateDisplay(displayElement) {
+        if (displayElement) displayElement.textContent = calcState.current;
+    }
+
+    function inputDigit(digit, displayElement) {
+        if (calcState.waitingForOperand) {
+            calcState.current = digit;
+            calcState.waitingForOperand = false;
+        } else {
+            calcState.current = calcState.current === '0' ? digit : calcState.current + digit;
+        }
+        updateDisplay(displayElement);
+    }
+
+    function inputDecimal(displayElement) {
+        if (calcState.waitingForOperand) {
+            calcState.current = '0.';
+            calcState.waitingForOperand = false;
+            updateDisplay(displayElement);
+            return;
+        }
+        if (!calcState.current.includes('.')) {
+            calcState.current += '.';
+            updateDisplay(displayElement);
+        }
+    }
+
+    function toggleSign(displayElement) {
+        const val = parseFloat(calcState.current);
+        if (isNaN(val)) return;
+        calcState.current = String(val * -1);
+        updateDisplay(displayElement);
+    }
+
+    function backspace(displayElement) {
+        if (calcState.waitingForOperand) return;
+        if (calcState.current.length === 1 || (calcState.current.length === 2 && calcState.current.startsWith('-'))) {
+            calcState.current = '0';
+        } else {
+            calcState.current = calcState.current.slice(0, -1);
+        }
+        updateDisplay(displayElement);
+    }
+
+    function clearAll(displayElement) {
+        calcState.current = '0';
+        calcState.prev = null;
+        calcState.operation = null;
+        calcState.waitingForOperand = false;
+        updateDisplay(displayElement);
+    }
+
+    function performOperation(nextOp, displayElement) {
+        const inputVal = parseFloat(calcState.current);
+        if (isNaN(inputVal)) return;
+
+        if (calcState.prev !== null && calcState.operation !== null && !calcState.waitingForOperand) {
+            let result;
+            const prevVal = calcState.prev;
+            switch (calcState.operation) {
+                case '+': result = prevVal + inputVal; break;
+                case '-': result = prevVal - inputVal; break;
+                case '*': result = prevVal * inputVal; break;
+                case '/': 
+                    if (inputVal === 0) {
+                        clearAll(displayElement);
+                        calcState.current = 'Ошибка';
+                        updateDisplay(displayElement);
+                        calcState.prev = null;
+                        calcState.operation = null;
+                        calcState.waitingForOperand = true;
+                        return;
+                    }
+                    result = prevVal / inputVal;
+                    break;
+                default: return;
+            }
+            calcState.current = String(result);
+            calcState.prev = null;
+            calcState.operation = null;
+            calcState.waitingForOperand = true;
+            updateDisplay(displayElement);
+        }
+
+        if (nextOp) {
+            calcState.prev = parseFloat(calcState.current);
+            calcState.operation = nextOp;
+            calcState.waitingForOperand = true;
+        } else {
+            // равно - уже всё посчитано выше
+            calcState.waitingForOperand = true;
+        }
+    }
+
+    function evaluate(displayElement) {
+        if (calcState.prev !== null && calcState.operation !== null && !calcState.waitingForOperand) {
+            performOperation(null, displayElement);
+        }
+    }
+
+    function initCalculator(container) {
+        // Создаём HTML структуру калькулятора
+        container.innerHTML = `
+            <div class="calculator">
+                <div class="calc-display" id="calcDisplay">0</div>
+                <div class="calc-buttons">
+                    <button class="calc-btn clear" data-action="clear">C</button>
+                    <button class="calc-btn backspace" data-action="backspace">⌫</button>
+                    <button class="calc-btn operator" data-action="sign">±</button>
+                    <button class="calc-btn operator" data-op="/">÷</button>
+
+                    <button class="calc-btn" data-digit="7">7</button>
+                    <button class="calc-btn" data-digit="8">8</button>
+                    <button class="calc-btn" data-digit="9">9</button>
+                    <button class="calc-btn operator" data-op="*">×</button>
+
+                    <button class="calc-btn" data-digit="4">4</button>
+                    <button class="calc-btn" data-digit="5">5</button>
+                    <button class="calc-btn" data-digit="6">6</button>
+                    <button class="calc-btn operator" data-op="-">-</button>
+
+                    <button class="calc-btn" data-digit="1">1</button>
+                    <button class="calc-btn" data-digit="2">2</button>
+                    <button class="calc-btn" data-digit="3">3</button>
+                    <button class="calc-btn operator" data-op="+">+</button>
+
+                    <button class="calc-btn" data-digit="0">0</button>
+                    <button class="calc-btn" data-digit=".">.</button>
+                    <button class="calc-btn equals" data-action="equals">=</button>
+                </div>
+            </div>
+        `;
+
+        const display = container.querySelector('#calcDisplay');
+        // Сброс состояния при открытии
+        calcState = {
+            current: '0',
+            prev: null,
+            operation: null,
+            waitingForOperand: false
+        };
+        updateDisplay(display);
+
+        // Назначение обработчиков
+        container.querySelectorAll('[data-digit]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const digit = btn.getAttribute('data-digit');
+                if (digit === '.') inputDecimal(display);
+                else inputDigit(digit, display);
+            });
+        });
+
+        container.querySelectorAll('[data-op]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const op = btn.getAttribute('data-op');
+                let mappedOp = op;
+                if (op === '÷') mappedOp = '/';
+                if (op === '×') mappedOp = '*';
+                performOperation(mappedOp, display);
+            });
+        });
+
+        const clearBtn = container.querySelector('[data-action="clear"]');
+        if (clearBtn) clearBtn.addEventListener('click', () => clearAll(display));
+
+        const backBtn = container.querySelector('[data-action="backspace"]');
+        if (backBtn) backBtn.addEventListener('click', () => backspace(display));
+
+        const signBtn = container.querySelector('[data-action="sign"]');
+        if (signBtn) signBtn.addEventListener('click', () => toggleSign(display));
+
+        const equalsBtn = container.querySelector('[data-action="equals"]');
+        if (equalsBtn) equalsBtn.addEventListener('click', () => evaluate(display));
+
+        // Клавиатурная поддержка
+        const handleKeyDown = (e) => {
+            const key = e.key;
+            if (/[0-9]/.test(key)) {
+                e.preventDefault();
+                inputDigit(key, display);
+            } else if (key === '.') {
+                e.preventDefault();
+                inputDecimal(display);
+            } else if (key === '+' || key === '-' || key === '*' || key === '/') {
+                e.preventDefault();
+                let op = key;
+                if (key === '*') op = '*';
+                if (key === '/') op = '/';
+                performOperation(op, display);
+            } else if (key === 'Enter' || key === '=') {
+                e.preventDefault();
+                evaluate(display);
+            } else if (key === 'Escape') {
+                e.preventDefault();
+                clearAll(display);
+            } else if (key === 'Backspace') {
+                e.preventDefault();
+                backspace(display);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        // Сохраняем возможность удалить обработчик при уходе с вкладки (опционально)
+        // Для простоты оставим, но он будет жить глобально, что не страшно.
+        // Можно при перерисовке удалять предыдущий, но не критично.
+    }
+
+    function renderCalculator() {
+        const contentDiv = document.getElementById('dynamicContent');
+        contentDiv.innerHTML = `<div class="section-title">🧮 Калькулятор</div><div id="calculatorRoot"></div>`;
+        const calcRoot = document.getElementById('calculatorRoot');
+        if (calcRoot) initCalculator(calcRoot);
     }
 
     // ---------- Остальные разделы ----------
@@ -657,6 +949,9 @@
         else if (sectionId === 'import') {
             renderImportSection();
         }
+        else if (sectionId === 'calculator') {
+            renderCalculator();
+        }
     }
 
     // ---------- Управление меню ----------
@@ -687,6 +982,7 @@
             else if (section === 'goods') setActiveSection('goods');
             else if (section === 'contacts') setActiveSection('contacts');
             else if (section === 'import') setActiveSection('import');
+            else if (section === 'calculator') setActiveSection('calculator');
             else if (section === 'exit') window.location.href = 'https://orbicrm.ru/';
         });
     });
