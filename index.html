@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>АРМ Клиента | Орби CRM</title>
+    <!-- Подключаем SheetJS для работы с Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -34,14 +36,12 @@
             border-bottom: 1px solid #e9edf2;
         }
 
-        /* левая группа: меню + название организации */
         .header-group {
             display: flex;
             align-items: center;
             gap: 40px;
         }
 
-        /* выпадающее меню (dropdown) */
         .dropdown {
             position: relative;
         }
@@ -81,7 +81,6 @@
             border-radius: 20px;
             box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.02);
             overflow: hidden;
-            backdrop-filter: blur(0);
             z-index: 150;
             opacity: 0;
             visibility: hidden;
@@ -113,7 +112,6 @@
             color: #0f172a;
         }
 
-        /* название организации */
         .org-name {
             font-size: 1.5rem;
             font-weight: 600;
@@ -122,10 +120,8 @@
             background-clip: text;
             -webkit-background-clip: text;
             color: transparent;
-            text-shadow: 0 1px 1px rgba(0,0,0,0.02);
         }
 
-        /* блок времени */
         .time-box {
             font-family: 'JetBrains Mono', monospace;
             font-size: 1.2rem;
@@ -134,17 +130,14 @@
             padding: 8px 18px;
             border-radius: 60px;
             color: #0f172a;
-            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.02);
         }
 
-        /* основной контент */
         .main-content {
             max-width: 1400px;
             margin: 28px auto;
             padding: 0 28px;
         }
 
-        /* карточка-контейнер */
         .dashboard-card {
             background: white;
             border-radius: 28px;
@@ -166,7 +159,6 @@
             padding-left: 20px;
         }
 
-        /* таблицы */
         .data-table {
             width: 100%;
             border-collapse: collapse;
@@ -202,7 +194,6 @@
             display: inline-block;
         }
 
-        /* календарь */
         .calendar-container {
             background: #ffffff;
             border-radius: 24px;
@@ -268,7 +259,6 @@
             padding: 12px 6px;
             border-radius: 16px;
             font-weight: 500;
-            transition: 0.1s;
             cursor: default;
             border: 1px solid #eef2f8;
         }
@@ -283,6 +273,41 @@
         .cal-day.other-month {
             color: #94a3b8;
             background: #fefefe;
+        }
+
+        /* Стили для импорта */
+        .import-area {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .file-label {
+            background: #3b82f6;
+            color: white;
+            padding: 12px 28px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: 0.2s;
+            font-size: 1rem;
+        }
+        .file-label:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+        #excelInput {
+            display: none;
+        }
+        .import-table-wrapper {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+        .import-info {
+            margin-top: 16px;
+            font-size: 0.85rem;
+            color: #4b5563;
         }
 
         @media (max-width: 700px) {
@@ -326,7 +351,6 @@
 
 <header class="app-header">
     <div class="header-group">
-        <!-- Выпадающий список Меню -->
         <div class="dropdown" id="dropdownMenu">
             <button class="menu-btn" id="menuButton">
                 ☰ Меню
@@ -336,6 +360,7 @@
                 <a data-section="deals">💰 Сделки</a>
                 <a data-section="goods">📦 Товары и услуги</a>
                 <a data-section="contacts">👥 Контакты</a>
+                <a data-section="import">📂 Импорт Excel</a>
                 <a data-section="exit">✖ Выход</a>
             </div>
         </div>
@@ -346,7 +371,6 @@
 
 <main class="main-content">
     <div class="dashboard-card" id="dynamicContent">
-        <!-- сюда динамически подставляется активный раздел -->
         <div style="text-align: center; padding: 40px;">Загрузка интерфейса...</div>
     </div>
 </main>
@@ -356,14 +380,12 @@
 
 <script>
     // ---------- ДАННЫЕ ДЛЯ ДЕМОНСТРАЦИИ (имитация АРМ клиента) ----------
-    // Сделки (mock)
     const dealsData = [
         { id: 1, name: "Внедрение CRM", amount: "1 250 000 ₽", stage: "Переговоры", date: "2025-07-20" },
         { id: 2, name: "Лицензия на 12 мес", amount: "340 000 ₽", stage: "Счёт выставлен", date: "2025-06-15" },
         { id: 3, name: "Расширение функционала", amount: "850 000 ₽", stage: "Закрыто", date: "2025-05-10" },
     ];
 
-    // Товары и услуги
     const goodsData = [
         { name: "Базовый тариф CRM", price: "12 900 ₽", unit: "месяц", desc: "До 10 пользователей" },
         { name: "Профессиональный тариф", price: "29 900 ₽", unit: "месяц", desc: "Расширенная аналитика" },
@@ -371,7 +393,6 @@
         { name: "Обучающий курс", price: "15 000 ₽", unit: "курс", desc: "Видео-уроки + методичка" },
     ];
 
-    // Контакты клиента (список персон)
     const contactsData = [
         { name: "Анна Крылова", position: "Руководитель отдела", phone: "+7 (912) 345-67-89", email: "a.krylova@example.com" },
         { name: "Дмитрий Волков", position: "Менеджер по закупкам", phone: "+7 (965) 123-45-67", email: "d.volkov@example.com" },
@@ -386,31 +407,24 @@
         return `${y}-${m}-${d}`;
     }
 
-    // Генерация календаря (с поддержкой переключения месяцев)
+    // ---------- Календарь ----------
     let currentCalendarYear = new Date().getFullYear();
-    let currentCalendarMonth = new Date().getMonth(); // 0-11
+    let currentCalendarMonth = new Date().getMonth();
 
     function renderCalendar(year, month) {
         const firstDayOfMonth = new Date(year, month, 1);
-        const startWeekday = firstDayOfMonth.getDay(); // 0 вс — но мы подстроим под понедельник
-        let startOffset = startWeekday === 0 ? 6 : startWeekday - 1; // понедельник как 0
-
+        const startWeekday = firstDayOfMonth.getDay();
+        let startOffset = startWeekday === 0 ? 6 : startWeekday - 1;
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-
         const prevMonthDays = new Date(year, month, 0).getDate();
         const calendarDays = [];
 
-        // предыдущий месяц
         for (let i = startOffset - 1; i >= 0; i--) {
             calendarDays.push({ day: prevMonthDays - i, isCurrentMonth: false });
         }
-
-        // текущий месяц
         for (let i = 1; i <= daysInMonth; i++) {
             calendarDays.push({ day: i, isCurrentMonth: true });
         }
-
-        // следующий месяц (добиваем до 42 ячеек для 6 строк)
         const remaining = 42 - calendarDays.length;
         for (let i = 1; i <= remaining; i++) {
             calendarDays.push({ day: i, isCurrentMonth: false });
@@ -418,7 +432,6 @@
 
         const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
         const weekdaysShort = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-
         const today = new Date();
         const todayYMD = formatDateToYMD(today);
 
@@ -436,7 +449,6 @@
                 </div>
                 <div class="calendar-days">
         `;
-
         for (let i = 0; i < calendarDays.length; i++) {
             const cell = calendarDays[i];
             const dayNum = cell.day;
@@ -445,7 +457,6 @@
             if (isCurrent) {
                 cellDate = new Date(year, month, dayNum);
             } else if (dayNum > 15) {
-                // прошлый месяц
                 let prevMonth = month === 0 ? 11 : month - 1;
                 let prevYear = month === 0 ? year - 1 : year;
                 cellDate = new Date(prevYear, prevMonth, dayNum);
@@ -454,18 +465,16 @@
                 let nextYear = month === 11 ? year + 1 : year;
                 cellDate = new Date(nextYear, nextMonth, dayNum);
             }
-
             let isToday = false;
-            if (cellDate) {
+            if (cellDate && isCurrent) {
                 const ymd = formatDateToYMD(cellDate);
-                if (ymd === todayYMD && isCurrent) isToday = true;
+                if (ymd === todayYMD) isToday = true;
             }
             let additionalClass = '';
             if (!isCurrent) additionalClass = 'other-month';
             if (isToday) additionalClass += ' today';
             html += `<div class="cal-day ${additionalClass}">${dayNum}</div>`;
         }
-
         html += `</div></div>`;
         return html;
     }
@@ -473,7 +482,6 @@
     function refreshCalendar(container) {
         if (!container) return;
         container.innerHTML = renderCalendar(currentCalendarYear, currentCalendarMonth);
-        // привязываем события к кнопкам внутри календаря
         const prevBtn = container.querySelector('.prev-month-btn');
         const nextBtn = container.querySelector('.next-month-btn');
         if (prevBtn) {
@@ -481,10 +489,7 @@
                 e.stopPropagation();
                 let newMonth = currentCalendarMonth - 1;
                 let newYear = currentCalendarYear;
-                if (newMonth < 0) {
-                    newMonth = 11;
-                    newYear--;
-                }
+                if (newMonth < 0) { newMonth = 11; newYear--; }
                 currentCalendarMonth = newMonth;
                 currentCalendarYear = newYear;
                 refreshCalendar(container);
@@ -495,10 +500,7 @@
                 e.stopPropagation();
                 let newMonth = currentCalendarMonth + 1;
                 let newYear = currentCalendarYear;
-                if (newMonth > 11) {
-                    newMonth = 0;
-                    newYear++;
-                }
+                if (newMonth > 11) { newMonth = 0; newYear++; }
                 currentCalendarMonth = newMonth;
                 currentCalendarYear = newYear;
                 refreshCalendar(container);
@@ -506,49 +508,128 @@
         }
     }
 
-    // -------- Отрисовка разделов --------
+    // ---------- Импорт Excel (SheetJS) ----------
+    let importedData = null; // хранить последние данные для возможного повторного использования
+
+    function renderImportSection() {
+        const contentDiv = document.getElementById('dynamicContent');
+        contentDiv.innerHTML = `
+            <div class="section-title">📂 Импорт данных из Excel</div>
+            <div class="import-area">
+                <label class="file-label" for="excelInput">
+                    📎 Выберите файл Excel (.xlsx, .xls)
+                </label>
+                <input type="file" id="excelInput" accept=".xlsx, .xls, .csv">
+                <div class="import-info">Поддерживаются файлы Excel (xlsx, xls). Данные первого листа будут отображены ниже.</div>
+            </div>
+            <div id="excelPreview" class="import-table-wrapper">
+                <p style="color: #6c7a91; text-align:center;">Файл не загружен</p>
+            </div>
+        `;
+
+        const fileInput = document.getElementById('excelInput');
+        fileInput.addEventListener('change', handleExcelUpload);
+    }
+
+    function handleExcelUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const previewDiv = document.getElementById('excelPreview');
+        previewDiv.innerHTML = '<p style="text-align:center;">⏳ Чтение файла...</p>';
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            // Берём первый лист
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
+            if (!rows || rows.length === 0) {
+                previewDiv.innerHTML = '<p style="color: #dc2626;">Файл пуст или не содержит данных.</p>';
+                return;
+            }
+            // Сохраняем данные
+            importedData = rows;
+            displayExcelTable(rows, previewDiv);
+        };
+        reader.onerror = function() {
+            previewDiv.innerHTML = '<p style="color: #dc2626;">Ошибка чтения файла. Попробуйте другой файл.</p>';
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function displayExcelTable(rows, container) {
+        if (!rows.length) {
+            container.innerHTML = '<p>Нет данных для отображения</p>';
+            return;
+        }
+        // Создаём таблицу
+        let html = '<table class="data-table" style="min-width: 500px;"><thead><tr>';
+        // Заголовки (первая строка)
+        const headerRow = rows[0];
+        for (let i = 0; i < headerRow.length; i++) {
+            let cellValue = (headerRow[i] !== undefined && headerRow[i] !== null) ? String(headerRow[i]) : '';
+            html += `<th>${escapeHtml(cellValue) || `Колонка ${i+1}`}</th>`;
+        }
+        html += '</tr></thead><tbody>';
+        // Данные (со второй строки)
+        for (let r = 1; r < rows.length; r++) {
+            const row = rows[r];
+            html += '<tr>';
+            for (let c = 0; c < headerRow.length; c++) {
+                let cell = (c < row.length && row[c] !== undefined && row[c] !== null) ? String(row[c]) : '';
+                html += `<td>${escapeHtml(cell)}</td>`;
+            }
+            // Если в строке больше колонок чем в заголовке (редко, но добавим запас)
+            if (row.length > headerRow.length) {
+                for (let c = headerRow.length; c < row.length; c++) {
+                    html += `<td>${escapeHtml(String(row[c]))}</td>`;
+                }
+            }
+            html += '</tr>';
+        }
+        html += '</tbody></table>';
+        html += `<div class="import-info">✅ Загружено строк: ${rows.length - 1}, колонок: ${headerRow.length}</div>`;
+        container.innerHTML = html;
+    }
+
+    // простая защита от XSS (пользовательские данные из Excel)
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
+            return c;
+        });
+    }
+
+    // ---------- Остальные разделы ----------
     function renderSection(sectionId) {
         const contentDiv = document.getElementById('dynamicContent');
         if (!contentDiv) return;
 
         if (sectionId === 'calendar') {
-            // сбросим календарь на текущую дату
             const now = new Date();
             currentCalendarYear = now.getFullYear();
             currentCalendarMonth = now.getMonth();
-            const calendarHtml = `
-                <div class="section-title">📅 Календарь событий</div>
-                <div id="calendarRoot" class="calendar-root"></div>
-            `;
+            const calendarHtml = `<div class="section-title">📅 Календарь событий</div><div id="calendarRoot" class="calendar-root"></div>`;
             contentDiv.innerHTML = calendarHtml;
             const calendarRoot = document.getElementById('calendarRoot');
-            if (calendarRoot) {
-                refreshCalendar(calendarRoot);
-            }
+            if (calendarRoot) refreshCalendar(calendarRoot);
         }
         else if (sectionId === 'deals') {
             let tableRows = '';
             dealsData.forEach(deal => {
-                tableRows += `<tr>
-                                 <td><strong>${deal.name}</strong></td>
-                                 <td>${deal.amount}</td>
-                                 <td><span class="badge">${deal.stage}</span></td>
-                                 <td>${deal.date}</td>
-                             </tr>`;
+                tableRows += `<tr><td><strong>${deal.name}</strong></td><td>${deal.amount}</td><td><span class="badge">${deal.stage}</span></td><td>${deal.date}</td></tr>`;
             });
             contentDiv.innerHTML = `
                 <div class="section-title">💰 Сделки</div>
-                <div style="overflow-x: auto;">
-                    <table class="data-table">
-                        <thead>
-                            <tr><th>Название сделки</th><th>Сумма</th><th>Стадия</th><th>Дата</th></tr>
-                        </thead>
-                        <tbody>${tableRows}</tbody>
-                    </table>
-                </div>
-                <div style="margin-top: 20px; background:#f9f9fb; padding: 16px; border-radius: 20px;">
-                    📊 Итоговая сумма активных сделок: 2 440 000 ₽
-                </div>
+                <div style="overflow-x: auto;"><table class="data-table"><thead><tr><th>Название сделки</th><th>Сумма</th><th>Стадия</th><th>Дата</th></tr></thead><tbody>${tableRows}</tbody></table></div>
+                <div style="margin-top:20px; background:#f9f9fb; padding:16px; border-radius:20px;">📊 Итоговая сумма активных сделок: 2 440 000 ₽</div>
             `;
         }
         else if (sectionId === 'goods') {
@@ -558,53 +639,34 @@
             });
             contentDiv.innerHTML = `
                 <div class="section-title">📦 Товары и услуги</div>
-                <div style="overflow-x: auto;">
-                    <table class="data-table">
-                        <thead><tr><th>Наименование</th><th>Цена</th><th>Ед. изм.</th><th>Описание</th></tr></thead>
-                        <tbody>${goodsRows}</tbody>
-                    </table>
-                </div>
-                <div style="margin-top: 20px; background:#f1f5fe; border-radius: 18px; padding: 16px;">
-                    ⚡ Актуальные предложения для клиентов "Орби"
-                </div>
+                <div style="overflow-x: auto;"><table class="data-table"><thead><tr><th>Наименование</th><th>Цена</th><th>Ед. изм.</th><th>Описание</th></tr></thead><tbody>${goodsRows}</tbody></table></div>
+                <div style="margin-top:20px; background:#f1f5fe; border-radius:18px; padding:16px;">⚡ Актуальные предложения для клиентов "Орби"</div>
             `;
         }
         else if (sectionId === 'contacts') {
             let contactsRows = '';
             contactsData.forEach(contact => {
-                contactsRows += `<tr>
-                                     <td><strong>${contact.name}</strong></td>
-                                     <td>${contact.position}</td>
-                                     <td>${contact.phone}</td>
-                                     <td>${contact.email}</td>
-                                 </tr>`;
+                contactsRows += `<tr><td><strong>${contact.name}</strong></td><td>${contact.position}</td><td>${contact.phone}</td><td>${contact.email}</td></tr>`;
             });
             contentDiv.innerHTML = `
                 <div class="section-title">👥 Контакты</div>
-                <div style="overflow-x: auto;">
-                    <table class="data-table">
-                        <thead><tr><th>ФИО</th><th>Должность</th><th>Телефон</th><th>Email</th></tr></thead>
-                        <tbody>${contactsRows}</tbody>
-                    </table>
-                </div>
-                <div style="margin-top: 24px; background:#eef2ff; border-radius: 20px; padding: 16px;">
-                    📞 Быстрая связь: общий корпоративный телефон +7 (495) 555-23-23
-                </div>
+                <div style="overflow-x: auto;"><table class="data-table"><thead><tr><th>ФИО</th><th>Должность</th><th>Телефон</th><th>Email</th></tr></thead><tbody>${contactsRows}</tbody></table></div>
+                <div style="margin-top:24px; background:#eef2ff; border-radius:20px; padding:16px;">📞 Быстрая связь: общий корпоративный телефон +7 (495) 555-23-23</div>
             `;
+        }
+        else if (sectionId === 'import') {
+            renderImportSection();
         }
     }
 
-    // ---------- Управление меню и состоянием ----------
+    // ---------- Управление меню ----------
     let currentSection = 'calendar';
-
     function setActiveSection(section) {
         currentSection = section;
         renderSection(section);
-        // закрываем выпадающее меню после выбора
         closeDropdown();
     }
 
-    // dropdown логика
     const menuBtn = document.getElementById('menuButton');
     const dropdownContent = document.getElementById('dropdownContent');
 
@@ -612,12 +674,10 @@
         e?.stopPropagation();
         dropdownContent.classList.toggle('show');
     }
-
     function closeDropdown() {
         dropdownContent.classList.remove('show');
     }
 
-    // обработчики пунктов меню
     document.querySelectorAll('.dropdown-content a').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
@@ -626,23 +686,17 @@
             else if (section === 'deals') setActiveSection('deals');
             else if (section === 'goods') setActiveSection('goods');
             else if (section === 'contacts') setActiveSection('contacts');
-            else if (section === 'exit') {
-                // Переадресация на https://orbicrm.ru/
-                window.location.href = 'https://orbicrm.ru/';
-            }
+            else if (section === 'import') setActiveSection('import');
+            else if (section === 'exit') window.location.href = 'https://orbicrm.ru/';
         });
     });
 
     menuBtn.addEventListener('click', toggleDropdown);
-
-    // закрытие при клике вне меню
     window.addEventListener('click', function(e) {
-        if (!menuBtn.contains(e.target) && !dropdownContent.contains(e.target)) {
-            closeDropdown();
-        }
+        if (!menuBtn.contains(e.target) && !dropdownContent.contains(e.target)) closeDropdown();
     });
 
-    // Обновление времени в реальном времени
+    // Часы
     function updateClock() {
         const now = new Date();
         const formatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -652,7 +706,7 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Инициализация: по умолчанию показываем календарь
+    // Старт
     setActiveSection('calendar');
 </script>
 </body>
