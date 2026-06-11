@@ -2,7 +2,7 @@ name: Update Contacts from Supabase
 
 on:
   schedule:
-    - cron: '0 */6 * * *'   # каждые 6 часов
+    - cron: '0 */1 * * *'   # каждые 6 часов
   push:
     branches: [ main ]       # или можно по пуше обновлять
   workflow_dispatch:        # кнопка для ручного запуска
