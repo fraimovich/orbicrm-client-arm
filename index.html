@@ -336,7 +336,7 @@
                 <a data-section="deals">💰 Сделки</a>
                 <a data-section="goods">📦 Товары и услуги</a>
                 <a data-section="contacts">👥 Контакты</a>
-                 <a data-section="exit">✖ Выход</a>
+                <a data-section="exit">✖ Выход</a>
             </div>
         </div>
         <div class="org-name">Орби</div>
@@ -530,11 +530,11 @@
             let tableRows = '';
             dealsData.forEach(deal => {
                 tableRows += `<tr>
-                                <td><strong>${deal.name}</strong></td>
-                                <td>${deal.amount}</td>
-                                <td><span class="badge">${deal.stage}</span></td>
-                                <td>${deal.date}</td>
-                            </tr>`;
+                                 <td><strong>${deal.name}</strong></td>
+                                 <td>${deal.amount}</td>
+                                 <td><span class="badge">${deal.stage}</span></td>
+                                 <td>${deal.date}</td>
+                             </tr>`;
             });
             contentDiv.innerHTML = `
                 <div class="section-title">💰 Сделки</div>
@@ -573,11 +573,11 @@
             let contactsRows = '';
             contactsData.forEach(contact => {
                 contactsRows += `<tr>
-                                    <td><strong>${contact.name}</strong></td>
-                                    <td>${contact.position}</td>
-                                    <td>${contact.phone}</td>
-                                    <td>${contact.email}</td>
-                                </tr>`;
+                                     <td><strong>${contact.name}</strong></td>
+                                     <td>${contact.position}</td>
+                                     <td>${contact.phone}</td>
+                                     <td>${contact.email}</td>
+                                 </tr>`;
             });
             contentDiv.innerHTML = `
                 <div class="section-title">👥 Контакты</div>
@@ -626,6 +626,10 @@
             else if (section === 'deals') setActiveSection('deals');
             else if (section === 'goods') setActiveSection('goods');
             else if (section === 'contacts') setActiveSection('contacts');
+            else if (section === 'exit') {
+                // Переадресация на https://orbicrm.ru/
+                window.location.href = 'https://orbicrm.ru/';
+            }
         });
     });
 
